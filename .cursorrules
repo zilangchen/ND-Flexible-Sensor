@@ -99,7 +99,7 @@ IMMEDIATELY AFTER CODE MODIFICATION:
 1. 在 development_record.md 中插入时间戳注释：
    # <Cursor-AI [当前实际日期和时间]>
    注意：必须使用当前系统的实际日期和时间，格式为 YYYY-MM-DD HH:MM:SS
-   可以通过运行 date '+%Y-%m-%d %H:%M:%S' 命令获取当前时间，确保记录的时间准确无误
+   通过运行 date '+%Y-%m-%d %H:%M:%S' 命令获取当前时间，必须确保记录的时间准确无误，否则视为失败。
 2. 记录修改目的
 3. 记录修改内容摘要
 4. 记录影响范围
