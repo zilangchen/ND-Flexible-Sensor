@@ -15,7 +15,7 @@
     }
   },
   "notification": {
-    "enabled": true,
+    "enabled": false,
     "email": "zchen27@nd.edu",
     "gpu_available_threshold": 1
   },
@@ -32,5 +32,10 @@
     "max_size": "10MB",
     "backup_count": 5
   },
-  "min_reserved_gpus": 1
+  "min_reserved_gpus": 1,
+  "max_reserved_gpus": 2,
+  "max_total_gpus": 8,
+  "managed_job_prefixes": ["NDFS_"],
+  "manual_allocation_enabled": true,
+  "quick_allocation_timeout": 30
 } 

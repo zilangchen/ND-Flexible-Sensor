@@ -167,12 +167,10 @@ class GPUResourceManager:
         self.monitor_thread = None
         self.lock = threading.Lock()
         self._display_status = False  # Flag for status display mode
+        self._enable_management = False  # Flag to enable automatic management
 
         # Load configuration
         self.config = self.load_config()
-
-        # Discover existing GPU jobs of current user
-        self._sync_allocations_with_qstat(add_new=True)
 
         # Setup signal handlers
         signal.signal(signal.SIGINT, self.signal_handler)
@@ -246,8 +244,11 @@ class GPUResourceManager:
                 self._sync_allocations_with_qstat()
                 # Update our view of free GPUs based on cluster state
                 self._update_gpu_status()
-                # Act on the latest information to reserve more GPUs if needed
-                self._manage_reserved_gpus()
+
+                # Only perform GPU management if explicitly enabled
+                if hasattr(self, '_enable_management') and self._enable_management:
+                    # Act on the latest information to reserve more GPUs if needed
+                    self._manage_reserved_gpus()
 
                 # If in status display mode, print current status
                 if hasattr(self, '_display_status') and self._display_status:
@@ -340,7 +341,7 @@ class GPUResourceManager:
                 del self.nodes[node_name]
 
     def _manage_reserved_gpus(self):
-        """Proactively reserve free GPUs up to the configured limit."""
+        """Proactively reserve free GPUs to maintain configured range."""
         with self.lock:
             # 1. Count current automatic reservations
             prefixes = self.config.get("managed_job_prefixes", ["NDFS_"])
@@ -359,39 +360,62 @@ class GPUResourceManager:
             )
 
             # 3. Get configuration limits
+            min_auto_gpus = self.config.get("min_reserved_gpus", 1)
             max_auto_gpus = self.config.get("max_reserved_gpus", 2)
             max_total_gpus = self.config.get("max_total_gpus", 8)
 
-            # 4. Calculate how many more auto GPUs we can request
-            needed_gpus = max_auto_gpus - num_auto_gpus
-            if needed_gpus <= 0:
-                return  # We have enough or too many auto-reserved GPUs
+            # 4. Check if we need to acquire more GPUs (for minimum requirement)
+            if num_auto_gpus < min_auto_gpus:
+                needed_gpus = min_auto_gpus - num_auto_gpus
+                gpus_can_add_before_total_limit = max_total_gpus - total_managed_gpus
+                gpus_to_request = min(
+                    needed_gpus, gpus_can_add_before_total_limit)
 
-            gpus_can_add_before_total_limit = max_total_gpus - total_managed_gpus
-            gpus_to_request = min(needed_gpus, gpus_can_add_before_total_limit)
+                if gpus_to_request > 0:
+                    # Check total free GPUs available in the cluster
+                    total_free_gpus = sum(
+                        node.free_gpus for node in self.nodes.values())
+                    if total_free_gpus > 0:
+                        num_to_acquire = min(gpus_to_request, total_free_gpus)
+                        logger.info(f"Auto-management: Need to maintain minimum {min_auto_gpus} GPUs. "
+                                    f"Current: {num_auto_gpus}, acquiring {num_to_acquire} more.")
 
-            if gpus_to_request <= 0:
+                        for i in range(num_to_acquire):
+                            task_id = f"{auto_prefix}{int(time.time() * 1000)}_{i}"
+                            allocation = self.allocate_gpus(
+                                task_id=task_id, num_gpus=1, manual=False)
+                            if not allocation:
+                                logger.warning(
+                                    f"Failed to submit auto-reservation job {task_id}. Will retry next cycle.")
+                                break
                 return
 
-            # 5. Check total free GPUs available in the cluster
-            total_free_gpus = sum(
-                node.free_gpus for node in self.nodes.values())
-            if total_free_gpus == 0:
-                return  # No GPUs to reserve
+            # 5. Check if we should acquire more GPUs (for optimal range, but within max)
+            if num_auto_gpus < max_auto_gpus:
+                needed_gpus = max_auto_gpus - num_auto_gpus
+                gpus_can_add_before_total_limit = max_total_gpus - total_managed_gpus
+                gpus_to_request = min(
+                    needed_gpus, gpus_can_add_before_total_limit)
 
-            # 6. Request GPUs one by one up to the calculated need
-            num_to_acquire = min(gpus_to_request, total_free_gpus)
-            if num_to_acquire > 0:
-                logger.info(
-                    f"Attempting to acquire {num_to_acquire} new GPU(s) to meet reservation target.")
-                for _ in range(num_to_acquire):
-                    task_id = f"{auto_prefix}{int(time.time() * 1000)}"
-                    allocation = self.allocate_gpus(
-                        task_id=task_id, num_gpus=1, manual=False)
-                    if not allocation:
-                        logger.warning(
-                            f"Failed to submit reservation job for {task_id}. Will retry next cycle.")
-                        break  # Stop trying if one submission fails
+                if gpus_to_request > 0:
+                    # Check total free GPUs available in the cluster
+                    total_free_gpus = sum(
+                        node.free_gpus for node in self.nodes.values())
+                    if total_free_gpus > 0:
+                        # Only acquire 1 at a time for gradual scaling
+                        num_to_acquire = min(
+                            gpus_to_request, total_free_gpus, 1)
+                        logger.info(f"Auto-management: Optimizing GPU allocation. "
+                                    f"Current auto: {num_auto_gpus}, target range: {min_auto_gpus}-{max_auto_gpus}, acquiring {num_to_acquire}.")
+
+                        for i in range(num_to_acquire):
+                            task_id = f"{auto_prefix}{int(time.time() * 1000)}_{i}"
+                            allocation = self.allocate_gpus(
+                                task_id=task_id, num_gpus=1, manual=False)
+                            if not allocation:
+                                logger.warning(
+                                    f"Failed to submit auto-reservation job {task_id}. Will retry next cycle.")
+                                break
 
     def start_program(self, task_id: str, program_config: Dict[str, Any]) -> bool:
         """Placeholder for program start logic."""
@@ -471,6 +495,63 @@ class GPUResourceManager:
             # Remove allocation tracking
             self.allocations.pop(task_id, None)
             return True
+
+    def quick_allocate_gpus(self, num_gpus: int, task_prefix: str = "manual") -> List[GPUAllocation]:
+        """Quickly allocate multiple GPUs with parallel submission for faster response."""
+        if num_gpus <= 0:
+            logger.warning("Invalid GPU count requested")
+            return []
+
+        with self.lock:
+            # Check total limit
+            reserved_now = sum(a.gpu_count for a in self.allocations.values()
+                               if a.status in ("running", "pending"))
+            max_total = self.config.get("max_total_gpus", 8)
+
+            if reserved_now + num_gpus > max_total:
+                available = max_total - reserved_now
+                logger.warning(
+                    f"Request {num_gpus} GPUs exceeds limit. Only {available} GPUs available within total limit.")
+                if available <= 0:
+                    return []
+                num_gpus = available
+
+            # Check cluster availability
+            total_free_gpus = sum(
+                node.free_gpus for node in self.nodes.values())
+            if total_free_gpus < num_gpus:
+                logger.warning(
+                    f"Only {total_free_gpus} free GPUs available in cluster, requested {num_gpus}")
+                num_gpus = total_free_gpus
+                if num_gpus <= 0:
+                    return []
+
+        # Submit multiple job requests
+        allocations = []
+        prefixes = self.config.get("managed_job_prefixes", ["NDFS_"])
+        timestamp = int(time.time() * 1000)
+
+        logger.info(f"Quick allocating {num_gpus} GPU(s)...")
+
+        for i in range(num_gpus):
+            task_id = f"{prefixes[0]}{task_prefix}_{timestamp}_{i+1}"
+            allocation = self.allocate_gpus(
+                task_id=task_id, num_gpus=1, manual=True)
+            if allocation:
+                allocations.append(allocation)
+                logger.info(
+                    f"Submitted GPU {i+1}/{num_gpus}: Job {allocation.job_id}")
+            else:
+                logger.warning(f"Failed to submit GPU {i+1}/{num_gpus}")
+                break
+
+        if allocations:
+            logger.info(
+                f"Successfully submitted {len(allocations)} GPU allocation requests")
+        else:
+            logger.error("Failed to allocate any GPUs")
+
+        return allocations
 
     def _sync_allocations_with_qstat(self, add_new: bool = False):
         """Synchronize allocation statuses with qstat -xml output."""
@@ -671,10 +752,14 @@ def main():
     parser.add_argument(
         "--config", default="gpu_manager_config.json", help="Configuration file")
     parser.add_argument("--monitor-only", action="store_true",
-                        help="Only monitor, don't manage")
+                        help="Only monitor, don't manage (same as default)")
+    parser.add_argument("--manage", action="store_true",
+                        help="Enable automatic GPU management (allocation/release)")
     parser.add_argument("--allocate", help="Allocate GPUs for a task (manual)")
     parser.add_argument("--gpus", type=int, default=1,
                         help="Number of GPUs to allocate with --allocate")
+    parser.add_argument("--quick-get", type=int, metavar="N",
+                        help="Quickly allocate N GPUs for immediate use")
     parser.add_argument("--release", help="Release GPUs for a task")
     parser.add_argument("--start-program", help="Start program for a task")
     parser.add_argument("--use", metavar="JOB_ID_OR_TASK_ID",
@@ -682,7 +767,7 @@ def main():
     parser.add_argument("--status", action="store_true",
                         help="Show current status once and exit")
     parser.add_argument("--daemon", action="store_true",
-                        help="Run in daemon mode (no status display)")
+                        help="Run in daemon mode with GPU management enabled")
 
     args = parser.parse_args()
 
@@ -696,6 +781,21 @@ def main():
     if args.status:
         # Just show status and exit
         manager.print_status()
+        return
+
+    if args.quick_get:
+        # Quick allocation of multiple GPUs
+        print(f"Quick allocation: requesting {args.quick_get} GPU(s)...")
+        manager._update_gpu_status()  # Get latest cluster state
+        allocations = manager.quick_allocate_gpus(args.quick_get, "quickget")
+        if allocations:
+            print(f"✅ Successfully submitted {len(allocations)} GPU requests:")
+            for i, alloc in enumerate(allocations, 1):
+                print(f"  {i}. Job {alloc.job_id} ({alloc.task_id})")
+            print("\nUse --status to monitor allocation progress")
+            print("Use --use <job_id> to convert a running job to interactive session")
+        else:
+            print("❌ Failed to allocate any GPUs")
         return
 
     if args.allocate:
@@ -727,21 +827,28 @@ def main():
         return
 
     # Determine the running mode
-    # If no specific arguments are provided, default to live status display mode
-    if not any([args.monitor_only, args.daemon]):
-        # Default: Live status display mode
-        manager._display_status = True
-        print("Starting GPU Resource Manager in live status display mode...")
-        print("Press Ctrl+C to exit")
-        time.sleep(2)  # Brief pause to show the message
-    elif args.daemon:
-        # Daemon mode: management only, no status display
+    if args.daemon:
+        # Daemon mode: full management with no status display
         manager._display_status = False
-        print("Starting GPU Resource Manager in daemon mode...")
-    elif args.monitor_only:
-        # Monitor only mode with periodic status display
+        manager._enable_management = True
+        print("Starting GPU Resource Manager in daemon mode (with automatic management)...")
+    elif args.manage:
+        # Management mode with status display
         manager._display_status = True
+        manager._enable_management = True
+        print("Starting GPU Resource Manager with automatic GPU management...")
+        print("📋 Auto-management: will maintain 1-2 GPUs automatically")
+        print("Press Ctrl+C to exit")
+        time.sleep(2)
+    else:
+        # Default: Monitor only mode (no management)
+        manager._display_status = True
+        manager._enable_management = False
         print("Starting GPU Resource Manager in monitor-only mode...")
+        print("💡 Use --manage to enable automatic GPU management")
+        print("💡 Use --quick-get N to quickly allocate N GPUs")
+        print("Press Ctrl+C to exit")
+        time.sleep(2)
 
     # Start monitoring
     try:
