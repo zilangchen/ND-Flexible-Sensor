@@ -207,3 +207,14 @@
 2025-07-15 23:52:43,870 - INFO - GPU monitoring started
 2025-07-15 23:52:51,144 - INFO - Received shutdown signal, cleaning up...
 2025-07-15 23:52:51,559 - INFO - GPU monitoring stopped
+2025-07-16 00:00:56,172 - INFO - GPU monitoring started
+2025-07-16 00:01:02,113 - INFO - Received shutdown signal, cleaning up...
+2025-07-16 00:01:02,819 - INFO - GPU monitoring stopped
+2025-07-16 00:01:52,262 - INFO - GPU monitoring started
+2025-07-16 00:02:21,952 - INFO - Attempting to acquire 1 new GPU(s) to meet reservation target.
+2025-07-16 00:05:41,986 - INFO - GPU monitoring started
+2025-07-16 00:05:47,928 - INFO - Received shutdown signal, cleaning up...
+2025-07-16 00:05:48,652 - INFO - GPU monitoring stopped
+2025-07-16 00:07:08,893 - INFO - GPU monitoring started
+2025-07-16 00:13:06,557 - WARNING - Only 0 free GPUs available in cluster, requested 2
+2025-07-16 00:14:00,989 - INFO - GPU monitoring started
