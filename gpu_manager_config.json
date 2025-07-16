@@ -1,0 +1,36 @@
+{
+  "monitor_interval": 1,
+  "max_gpus_per_task": 4,
+  "auto_scale": true,
+  "program_template": {
+    "command": "python train.py",
+    "args": [
+      "--gpus", "{gpu_list}",
+      "--batch_size", "32",
+      "--epochs", "100"
+    ],
+    "env_vars": {
+      "CUDA_VISIBLE_DEVICES": "{gpu_list}",
+      "PYTHONPATH": "/users/zchen27/ND-Flexible-Sensor"
+    }
+  },
+  "notification": {
+    "enabled": true,
+    "email": "zchen27@nd.edu",
+    "gpu_available_threshold": 1
+  },
+  "scaling": {
+    "enabled": true,
+    "min_gpus": 1,
+    "max_gpus": 4,
+    "scale_up_threshold": 0.8,
+    "scale_down_threshold": 0.3
+  },
+  "logging": {
+    "level": "INFO",
+    "file": "gpu_manager.log",
+    "max_size": "10MB",
+    "backup_count": 5
+  },
+  "min_reserved_gpus": 1
+} 
