@@ -218,3 +218,79 @@
 2025-07-16 00:07:08,893 - INFO - GPU monitoring started
 2025-07-16 00:13:06,557 - WARNING - Only 0 free GPUs available in cluster, requested 2
 2025-07-16 00:14:00,989 - INFO - GPU monitoring started
+2025-07-16 01:17:28,307 - INFO - Auto-management: Need to maintain minimum 1 GPUs. Current: 0, acquiring 1 more.
+2025-07-16 13:00:37,844 - INFO - GPU monitoring started
+2025-07-16 13:00:44,576 - INFO - GPU monitoring started
+2025-07-16 13:04:14,164 - INFO - GPU monitoring started
+2025-07-16 13:04:33,808 - INFO - Received shutdown signal, cleaning up...
+2025-07-16 13:04:33,809 - ERROR - Unable to execute free_gpus.sh @crc_gpu: Command '['free_gpus.sh', '@crc_gpu']' died with <Signals.SIGINT: 2>.
+2025-07-16 13:04:34,927 - INFO - GPU monitoring stopped
+2025-07-16 13:05:03,628 - INFO - Auto-management: Need to maintain minimum 1 GPUs. Current: 0, acquiring 1 more.
+2025-07-16 13:05:04,199 - INFO - GPU monitoring started
+2025-07-16 13:37:55,671 - INFO - Auto-management: Need to maintain minimum 1 GPUs. Current: 0, acquiring 1 more.
+2025-07-16 13:49:39,714 - INFO - GPU monitoring started
+2025-07-16 13:49:47,323 - INFO - GPU monitoring started
+2025-07-16 13:57:09,526 - INFO - Received shutdown signal, cleaning up...
+2025-07-16 13:57:14,527 - INFO - GPU monitoring stopped
+2025-07-16 14:01:33,947 - INFO - GPU monitoring started
+2025-07-16 14:02:05,187 - INFO - Auto-management: Need to maintain minimum 1 GPUs. Current: 0, acquiring 1 more.
+2025-07-18 12:57:02,556 - INFO - GPU monitoring started
+2025-07-18 13:18:48,530 - INFO - GPU monitoring started
+2025-07-18 13:24:15,701 - INFO - Received shutdown signal, cleaning up...
+2025-07-18 13:24:15,707 - ERROR - Unable to execute free_gpus.sh @crc_gpu: Command '['free_gpus.sh', '@crc_gpu']' died with <Signals.SIGINT: 2>.
+2025-07-18 13:24:19,689 - INFO - GPU monitoring stopped
+2025-07-18 13:25:38,883 - INFO - Received shutdown signal, cleaning up...
+2025-07-18 13:25:39,301 - ERROR - Unable to execute free_gpus.sh @crc_gpu: Command '['free_gpus.sh', '@crc_gpu']' died with <Signals.SIGINT: 2>.
+2025-07-18 13:25:40,399 - INFO - GPU monitoring stopped
+2025-07-18 13:46:22,299 - INFO - GPU monitoring started
+2025-07-18 15:06:43,587 - INFO - Auto-management: Need to maintain minimum 1 GPUs. Current: 0, acquiring 1 more.
+2025-07-18 18:01:38,858 - INFO - GPU monitoring started
+2025-07-18 18:02:25,503 - INFO - GPU monitoring started
+2025-07-18 18:08:44,969 - WARNING - Only 0 free GPUs available in cluster, requested 1
+2025-07-18 18:15:02,697 - INFO - GPU monitoring started
+2025-07-18 18:49:34,902 - INFO - Received shutdown signal, cleaning up...
+2025-07-18 18:49:35,002 - ERROR - Unable to execute free_gpus.sh @crc_gpu: Command '['free_gpus.sh', '@crc_gpu']' died with <Signals.SIGINT: 2>.
+2025-07-18 18:49:38,981 - INFO - GPU monitoring stopped
+2025-07-18 18:50:18,688 - INFO - GPU monitoring started
+2025-07-18 19:39:51,402 - INFO - Auto-management: Need to maintain minimum 1 GPUs. Current: 0, acquiring 1 more.
+2025-07-19 00:35:00,454 - ERROR - Error in monitoring loop: [Errno 5] Input/output error
+Traceback (most recent call last):
+  File "/users/zchen27/ND-Flexible-Sensor/scripts/gpu_resource_manager.py", line 255, in _monitor_loop
+    self._display_current_status()
+  File "/users/zchen27/ND-Flexible-Sensor/scripts/gpu_resource_manager.py", line 286, in _display_current_status
+    print(f"🔵 My Running GPUs:  {summary.get('running', 0)}")
+OSError: [Errno 5] Input/output error
+2025-07-19 16:45:06,116 - INFO - Quick allocating 1 GPU(s)...
+2025-07-19 16:45:07,239 - INFO - Submitted reservation job 1905398 for task NDFS_quickget_1752957906116_1
+2025-07-19 16:45:07,239 - INFO - Submitted GPU 1/1: Job 1905398
+2025-07-19 16:45:07,239 - INFO - Successfully submitted 1 GPU allocation requests
+2025-07-19 16:48:59,816 - INFO - GPU monitoring started
+2025-07-19 16:49:05,686 - INFO - Auto-management: Need to maintain minimum 1 GPUs. Current: 0, acquiring 1 more.
+2025-07-19 16:55:10,141 - INFO - Quick allocating 1 GPU(s)...
+2025-07-19 16:55:11,333 - INFO - Submitted reservation job 1905432 for task NDFS_quickget_1752958510141_1
+2025-07-19 16:55:11,333 - INFO - Submitted GPU 1/1: Job 1905432
+2025-07-19 16:55:11,334 - INFO - Successfully submitted 1 GPU allocation requests
+2025-07-21 14:55:18,285 - INFO - GPU monitoring started
+2025-07-21 15:00:15,443 - INFO - GPU monitoring started
+2025-07-21 15:05:00,662 - INFO - GPU monitoring started
+2025-07-21 15:05:04,171 - INFO - 🚀 AGGRESSIVE AUTO-MANAGEMENT: Need minimum 2 GPUs. Current: 0, aggressively acquiring 2 more.
+2025-07-21 15:41:39,254 - INFO - GPU monitoring started
+2025-07-21 15:41:42,168 - INFO - 🚀 AGGRESSIVE AUTO-MANAGEMENT: Need minimum 2 GPUs. Current: 0, aggressively acquiring 2 more.
+2025-07-21 15:41:42,191 - INFO - Received shutdown signal, cleaning up...
+2025-07-21 15:41:47,191 - INFO - GPU monitoring stopped
+2025-07-21 15:41:57,266 - INFO - GPU monitoring started
+2025-07-21 15:42:00,207 - INFO - Received shutdown signal, cleaning up...
+2025-07-21 15:42:00,208 - ERROR - Unable to execute free_gpus.sh @crc_gpu: Command '['free_gpus.sh', '@crc_gpu']' died with <Signals.SIGTERM: 15>.
+2025-07-21 15:42:00,793 - INFO - GPU monitoring stopped
+2025-07-21 15:43:40,836 - INFO - Received shutdown signal, cleaning up...
+2025-07-21 15:43:45,837 - INFO - GPU monitoring stopped
+2025-07-21 15:44:03,452 - INFO - GPU monitoring started
+2025-07-21 15:44:06,628 - INFO - 🚀 AGGRESSIVE AUTO-MANAGEMENT: Need minimum 2 GPUs. Current: 0, aggressively acquiring 2 more.
+2025-07-21 15:44:20,281 - INFO - Received shutdown signal, cleaning up...
+2025-07-21 15:44:25,282 - INFO - GPU monitoring stopped
+2025-07-21 15:44:27,527 - INFO - GPU monitoring started
+2025-07-21 15:44:32,265 - INFO - 🚀 AGGRESSIVE AUTO-MANAGEMENT: Need minimum 2 GPUs. Current: 0, aggressively acquiring 2 more.
+2025-07-21 15:45:06,091 - INFO - Received shutdown signal, cleaning up...
+2025-07-21 15:45:11,091 - INFO - GPU monitoring stopped
+2025-07-21 15:45:13,464 - INFO - GPU monitoring started
+2025-07-22 02:06:16,288 - INFO - Removing completed/deleted job 1911573 from tracking.

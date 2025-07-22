@@ -1,5 +1,5 @@
 {
-  "monitor_interval": 1,
+  "monitor_interval": 0.5,
   "max_gpus_per_task": 4,
   "auto_scale": true,
   "program_template": {
@@ -32,10 +32,13 @@
     "max_size": "10MB",
     "backup_count": 5
   },
-  "min_reserved_gpus": 1,
-  "max_reserved_gpus": 2,
+  "min_reserved_gpus": 2,
+  "max_reserved_gpus": 4,
   "max_total_gpus": 8,
   "managed_job_prefixes": ["NDFS_"],
   "manual_allocation_enabled": true,
-  "quick_allocation_timeout": 30
+  "quick_allocation_timeout": 30,
+  "aggressive_mode": true,
+  "parallel_submissions": 3,
+  "queue_waiting": true
 } 
