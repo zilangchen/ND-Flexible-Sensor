@@ -1,7 +1,8 @@
 {
-  "monitor_interval": 0.5,
+  "monitor_interval": 2,
   "max_gpus_per_task": 4,
   "auto_scale": true,
+  "auto_manage": true,
   "program_template": {
     "command": "python train.py",
     "args": [
@@ -32,9 +33,10 @@
     "max_size": "10MB",
     "backup_count": 5
   },
-  "min_reserved_gpus": 2,
-  "max_reserved_gpus": 4,
-  "max_total_gpus": 8,
+  "min_reserved_gpus": 1,
+  "max_reserved_gpus": 2,
+  "max_total_gpus": 4,
+  "job_prefix": "NDFS_",
   "managed_job_prefixes": ["NDFS_"],
   "manual_allocation_enabled": true,
   "quick_allocation_timeout": 30,

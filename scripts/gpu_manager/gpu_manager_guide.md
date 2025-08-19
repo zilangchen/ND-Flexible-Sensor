@@ -419,7 +419,7 @@ def calculate_request_priority(self, current_load: float) -> int:
 #### **1. 基础监控**
 
 ```bash
-# 进入项目目录
+# 进入项目目录eg.
 cd /users/zchen27/ND-Flexible-Sensor
 
 # 查看当前状态
@@ -824,7 +824,7 @@ class MultiUserGPUManager:
 
 - **开发阶段**: `min_reserved_gpus: 1, max_total_gpus: 2, auto_manage: false`
 - **实验阶段**: `min_reserved_gpus: 2, max_total_gpus: 4, auto_manage: true`
-- **生产阶段**: `min_reserved_gpus: 1, max_total_gpus: 8, auto_manage: true`
+
 
 ### 2. 监控策略
 
