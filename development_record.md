@@ -19,6 +19,7 @@
 ## 技术细节
 
 执行命令：
+
 ```bash
 echo ".DS_Store" >> .gitignore
 git rm -r --cached .
@@ -26,6 +27,110 @@ git add .
 git commit -m "chore(git): ignore .DS_Store and purge tracked .DS_Store files"
 git push origin main
 ```
+
+---
+
+# <Cursor-AI 2025-08-21 22:56:00>
+
+## 修改目的
+
+提供上位机实时热力图可视化脚本，直接读取固件输出的 CSV 帧并绘制 10×10 ΔC 热力图，便于实验观察与快速验证。
+
+## 修改内容摘要
+
+1. 新增 `scripts/visualize/serial_heatmap.py`：
+   - 串口读取（默认 115200），自动发送 `c` 指令切换固件到 CSV 模式。
+   - 解析 10×10 浮点 CSV 帧，使用 matplotlib 动画实时绘制热力图。
+   - 每帧自适应色标，可按需改为固定色标。
+
+## 影响范围
+
+- 可视化：提供即开即用的图形化热力图；与 ASCII/CSV 终端显示互补。
+- 依赖：需要 `pyserial`、`matplotlib`（按需 `pip install`）。
+
+## 技术细节
+
+- 健壮性：逐行解析，非 CSV 行自动忽略；1 秒读帧超时返回 None，避免阻塞。
+- 交互：脚本启动后可直接看到动态热力图；固件端仍可用串口命令切换模式。
+
+# <Cursor-AI 2025-08-21 22:47:38>
+
+## 修改目的
+
+增加“ASCII 热力图模式”便于在 PlatformIO 串口监视器中直接查看 10×10 ΔC 分布；同时将串口监视器速率设置为 115200 提升带宽与稳定性。
+
+## 修改内容摘要
+
+1. `Flexible_Sensor/src/main.cpp`：
+   - 新增 ASCII 热力图渲染（基于字符密度与 ANSI 清屏刷帧）。
+   - 新增串口命令：`h` 切换 ASCII、`c` 切换 CSV、`q` 静默、`b` 重采基线、`s` 查看模式。
+   - 默认开启 ASCII、关闭 CSV；帧后打印 FPS；保留 CSV 输出函数。
+2. `Flexible_Sensor/platformio.ini`：设置 `monitor_speed=115200`。
+
+## 影响范围
+
+- 终端可视化：无需外部工具即可在 PIO 监视器观测 ΔC 空间分布。
+- 带宽：使用 115200 波特率显著降低乱码与阻塞风险。
+
+## 技术细节
+
+- 每帧归一化：按帧内 `vmin/vmax` 线性映射到 10 级字符 ramp（`" .:-=+*#%@"`）。
+- ANSI 刷新：`"\x1b[2J\x1b[H"` 清屏+光标复位实现就地刷新。
+- 交互：串口读入按键切换 ASCII/CSV/静默与重基线；便于实验与对比。
+
+# <Cursor-AI 2025-08-21 22:34:33>
+
+## 修改目的
+
+将用户提供的 ESP32 + FDC2214 + 2×CD74HC4067 10×10 电容矩阵扫描示例集成到 PlatformIO 项目中，使 `Flexible_Sensor` 可直接编译烧录并输出 ΔC 矩阵 CSV，便于硬件联调与验证。
+
+## 修改内容摘要
+
+1. 覆盖 `Flexible_Sensor/src/main.cpp`，实现 I²C 初始化、FDC2214 配置（CH0）、双 4067 行/列寻址、基线采集与逐帧扫描、串口打印 10×10 ΔC 矩阵。
+2. 保持串口波特率 115200、I²C 400kHz、FDC2214 关键寄存器参数与 README 示例一致。
+
+## 影响范围
+
+- 代码：`Flexible_Sensor/src/main.cpp`（替换为完整扫描实现）。
+- 文档：无改动（示例参数与 `README.md` 一致）。
+- 构建：需要安装 PlatformIO CLI（`pio`）后方可本地编译。
+
+## 技术细节
+
+- I²C：`SDA=21`、`SCL=22`、`ADDR=0x2B`；初始化 `Wire.begin(21,22,400000)`。
+- 控制引脚：ROW S0..S3→`18,19,17,16`；COL S0..S3→`33,25,26,27`；SD→`23`（上电置高）。
+- FDC2214：`CONFIG=0x1E01`、`MUX_CONFIG=0xC20D`、`RCOUNT=0x0200`、`SETTLE=0x0200`、`CLOCK_DIV=0x2001`、`DRV_CURRENT=0x5800`；读 28 位数据，频率换算电容。
+- 计算：`Fref=40MHz`、`L=33uH`，`ΔC = C - baseline`；基线平均 12 次；逐帧 CSV 输出 + 帧时统计。
+- 构建：本机缺少 `pio` 命令，未执行编译；建议安装 PlatformIO 后运行 `pio run -d Flexible_Sensor` 验证。
+
+# <Cursor-AI 2025-08-21 22:18:40>
+
+## 修改目的
+
+按用户提供的硬件说明，整理并集成 ESP32 + FDC2214 + 双 CD74HC4067 的 10×10 电容矩阵硬件接线与工作原理到项目 `README.md`，并附上可直接烧录的 Arduino 示例，便于快速搭建与验证。
+
+## 修改内容摘要
+
+1. 在 `README.md` 新增“ESP32 + FDC2214 + 2×CD74HC4067 → 10×10 电容矩阵（CH0-only）”章节。
+2. 补充完整接口对照（ESP32↔FDC2214，ESP32↔4067 行/列选通）、CH0 谐振网络关系与扫描流程说明。
+3. 给出关键寄存器与参数建议（地址、I²C 速率、Deglitch、RCOUNT/SETTLE、DRV_CURRENT、延时、帧率、L）。
+4. 添加“运行与测试”“常见问题”清单，提高落地效率与调试可行性。
+5. 嵌入完整 Arduino 示例（扫描 10×10 并输出 ΔC CSV）。
+
+## 影响范围
+
+- 文档：仅更新 `README.md`，不改动代码目录与脚本。
+- 硬件：明确接线规范与参数建议，降低搭建与调试成本。
+- 团队协作：README 成为统一的硬件参考入口，提高一致性。
+
+## 技术细节
+
+- I²C 地址固定为 `0x2B`（ADDR=3.3 V）。
+- 参考 40 MHz，`MUX_CONFIG=0xC20D`（10 MHz 去毛刺），`CONFIG=0x1E01`。
+- CH0 关键时序：`RCOUNT=0x0200`、`SETTLE=0x0200`、`CLOCK_DIV=0x2001`、`DRV_CURRENT=0x5800`。
+- 4067 地址引脚：行 S0..S3→`GPIO18/19/17/16`，列 S0..S3→`GPIO33/25/26/27`；/EN 置 GND。
+- SD（关断）脚：`GPIO23` 上电后置高，延时 10 ms 再初始化。
+- 示例中基线平均 12 次，帧循环打印 10×10 ΔC（浮点 CSV）。
 
 ---
 

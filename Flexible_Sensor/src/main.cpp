@@ -1,89 +1,3 @@
-# ND-Flexible-Sensor
-
-## ESP32 + FDC2214 + 2×CD74HC4067 → 10×10 电容矩阵（CH0-only）
-
-版本：2025-08-21  
-目标：使用普通 ESP32-WROOM-32 通过 I²C 驱动现有的 FDC2214 板（板载 40 MHz 参考与 CH0 电感已就绪），仅使用 CH0，配合两片 CD74HC4067 完成 10×10 电容矩阵扫描（行/列选通）。
-
-### 1) 接口对照表
-
-#### 1.1 ESP32 ↔ FDC2214（I²C 与控制）
-
-| 功能         | FDC2214 板引脚 | ESP32-WROOM-32 引脚 | 说明                                   |
-| ------------ | -------------- | ------------------- | -------------------------------------- |
-| I²C 数据     | SDA            | GPIO21 (SDA)        | 板上已带 4.7 kΩ 上拉                   |
-| I²C 时钟     | SCL            | GPIO22 (SCL)        | —                                      |
-| 关断/复位    | SD             | GPIO23              | 高=工作；低=关断；上电置高并延时 10 ms |
-| 地址         | ADDR           | 3.3 V               | 固定地址 0x2B（GND 为 0x2A）           |
-| 中断（可选） | INTB           | （可接 GPIO34）     | 低有效；本项目未使用                   |
-| 供电         | 3V3 / GND      | 3V3 / GND           | 与 ESP32 共电、共地                    |
-
-> 板上 CLKIN 已由 40 MHz 有源振荡器提供；通道 L（电感）与 SENSOR0 端口已连好。
-
-#### 1.2 ESP32 ↔ 两片 CD74HC4067（行/列选通）
-
-行 4067（ROW）
-
-- S0/S1/S2/S3 → GPIO18 / GPIO19 / GPIO17 / GPIO16
-- /EN → GND（低有效，可选接 GPIO 控制）
-- COM → FDC2214 IN0A（SENSOR0 的一侧）
-- X0…X9 → 10 条行电极 Ex0…Ex9
-- X10…X15 → 悬空或 1 MΩ 下拉（抑制漂移）
-
-列 4067（COL）
-
-- S0/S1/S2/S3 → GPIO33 / GPIO25 / GPIO26 / GPIO27
-- /EN → GND（低有效）
-- COM → FDC2214 IN0B（SENSOR0 的另一侧）
-- X0…X9 → 10 条列电极 Ey0…Ey9
-- X10…X15 → 悬空或 1 MΩ 下拉
-
-#### 1.3 CH0 谐振网络与传感片
-
-- 33 µH 电感跨接 IN0A ↔ IN0B（板上已就位）。
-- 方案：行 4067 的 COM → IN0A，列 4067 的 COM → IN0B。选中某一行/列后，在 IN0A/IN0B 之间形成 LC 并联谐振，FDC2214 测量其频率。
-
-### 2) 原理与流程
-
-- FDC2214 通过测量 LC 谐振频率 f₀=1/(2π√(LC)) 反演电容 C。
-- 两片 4067 分别将一条行电极与一条列电极选通到 IN0A/IN0B，使交点互电容 Cij 接入谐振回路。
-- ESP32 以 I²C 初始化/采样 FDC2214，并用 GPIO 驱动 4067 S0…S3 完成 10×10 轮询。
-
-扫描步骤：设行 r → 设列 c → 延时 20–250 µs → 读 CH0 28-bit 码 → 还原频率与电容 → 输出 ΔC=C−C₀。
-
-### 3) 关键参数（建议初值）
-
-| 参数          | 建议值     | 说明                           |
-| ------------- | ---------- | ------------------------------ |
-| FDC2214 地址  | 0x2B       | ADDR=3.3 V                     |
-| I²C 速率      | 400 kHz    | Wire.begin(21,22,400k)         |
-| Deglitch      | 10 MHz     | MUX_CONFIG=0xC20D              |
-| RCOUNT        | 0x0200     | ≈0.205 ms/次                   |
-| SETTLECOUNT   | 0x0200     | ≈12.8 µs                       |
-| DRIVE_CURRENT | 0x5800     | 中等；示波器微调至 1.2–1.8 Vpp |
-| 4067 稳定延时 | 20–250 µs  | 基线/采样分别使用              |
-| 帧率          | ~40–50 FPS | 受 RCOUNT/延时影响             |
-| L（CH0）      | 33 µH      | 以板 BOM 为准                  |
-
-### 4) 运行与测试
-
-1. 按接口表接线，确认 IN0A/IN0B、两片 4067 的 COM 与 S0…S3 正确。
-2. 打开串口 115200，烧录下方 Arduino 示例。
-3. 上电后查看 MID/DID 是否正确（TI=0x5449，Device=0x3055）。
-4. 观察 10×10 ΔC 矩阵随按压/弯折变化；帧时间 ≈20–25 ms。
-5. 若需更稳：增大 RCOUNT（如 0x0400）并将像素延时调到 400–600 µs。
-
-### 5) 常见问题
-
-- I²C 无响应：检查 3.3 V/GND 共地；确认地址 0x2B；SD（GPIO23）上电置高。
-- 频率过低：互容过大或寄生大 → 适当减小并联电容或更小 L。
-- 振幅异常：用 DRV_CURRENT 微调至 1.2–1.8 Vpp，避免触发 ESD 箝位。
-- 串扰/噪声：传感片至 4067 走线尽量短；旁加地护线；X10–X15 1 MΩ 下拉。
-- 上电顺序：3.3 V → SD 拉高 → 10 ms → 写寄存器 → 扫描。
-
-### 6) Arduino 示例（ESP32 + FDC2214 + 4067×2，扫描 10×10）
-
-```cpp
 // esp32_fdc2214_10x10.ino
 // ESP32 (WROOM-32) + FDC2214 board (CH0 only) + 2×CD74HC4067 → 10×10 capacitance matrix
 // Wiring summary is in hardware_config.md. This sketch scans all 100 pixels and prints ΔC matrix.
@@ -135,6 +49,79 @@ static const int ROWS = 10, COLS = 10;
 /* ---------------- Buffers ---------------- */
 static float baseline[ROWS][COLS];
 static float mat[ROWS][COLS];
+
+/* ---------------- Output mode flags ---------------- */
+static bool g_print_csv = false;
+static bool g_print_ascii = true;
+
+/* ---------------- ASCII heatmap rendering ---------------- */
+static void printCSV(){
+  for(int r=0;r<ROWS;r++){
+    for(int c=0;c<COLS;c++){
+      Serial.print(mat[r][c], 9);
+      if(c<COLS-1) Serial.print(',');
+    }
+    Serial.println();
+  }
+  Serial.println();
+}
+
+static inline float clampf(float v, float lo, float hi){
+  if(v < lo) return lo; if(v > hi) return hi; return v;
+}
+
+static void printAsciiHeatmap(){
+  // Compute per-frame min/max for normalization
+  float vmin = mat[0][0], vmax = mat[0][0];
+  for(int r=0;r<ROWS;r++){
+    for(int c=0;c<COLS;c++){
+      float v = mat[r][c];
+      if(v < vmin) vmin = v;
+      if(v > vmax) vmax = v;
+    }
+  }
+  float span = (vmax - vmin);
+  if(span < 1e-12f) span = 1e-12f;
+
+  // Grayscale ramps; choose characters by density
+  const char* ramp = " .:-=+*#%@"; // 10 levels
+  const int rampLen = 10;
+
+  // Clear screen and move cursor home for an in-place refresh (ANSI)
+  Serial.print("\x1b[2J\x1b[H");
+  Serial.println("ASCII Heatmap (ΔC, normalized per-frame)  —  'h':toggle ASCII  'c':toggle CSV  'b':baseline  'q':quiet");
+
+  for(int r=0;r<ROWS;r++){
+    for(int c=0;c<COLS;c++){
+      float norm = (mat[r][c] - vmin) / span;     // 0..1
+      int idx = (int)(norm * (rampLen - 1) + 0.5f);
+      idx = idx < 0 ? 0 : (idx >= rampLen ? rampLen-1 : idx);
+      Serial.print(ramp[idx]);
+      Serial.print(ramp[idx]); // double width for squarish pixels
+    }
+    Serial.println();
+  }
+  Serial.println();
+}
+
+static void handleSerial(){
+  while(Serial.available() > 0){
+    int ch = Serial.read();
+    if(ch == 'h' || ch == 'H'){
+      g_print_ascii = !g_print_ascii; if(g_print_ascii) g_print_csv = false;
+    } else if(ch == 'c' || ch == 'C'){
+      g_print_csv = !g_print_csv; if(g_print_csv) g_print_ascii = false;
+    } else if(ch == 'q' || ch == 'Q'){
+      g_print_ascii = false; g_print_csv = false;
+    } else if(ch == 'b' || ch == 'B'){
+      Serial.println("Re-taking baseline ...");
+      takeBaseline(12);
+      Serial.println("Baseline updated.");
+    } else if(ch == 's' || ch == 'S'){
+      Serial.printf("Mode: ASCII=%d, CSV=%d\n", (int)g_print_ascii, (int)g_print_csv);
+    }
+  }
+}
 
 /* ---------------- Utilities ---------------- */
 static inline void set4067(const int p[4], uint8_t idx){
@@ -210,16 +197,6 @@ void scanFrame(bool printCSV=false){
       mat[r][c] = cap - baseline[r][c]; // ΔC
     }
   }
-  if(printCSV){
-    for(int r=0;r<ROWS;r++){
-      for(int c=0;c<COLS;c++){
-        Serial.print(mat[r][c], 9);
-        if(c<COLS-1) Serial.print(',');
-      }
-      Serial.println();
-    }
-    Serial.println();
-  }
 }
 
 /* ---------------- Setup & Loop ---------------- */
@@ -250,16 +227,21 @@ void setup(){
   Serial.println("Taking baseline ...");
   takeBaseline(12);
   Serial.println("Baseline done.");
+
+  Serial.println("Commands: 'h' toggle ASCII heatmap, 'c' toggle CSV, 'q' quiet, 'b' baseline, 's' status");
 }
 
 void loop(){
   uint32_t t0 = millis();
-  scanFrame(true);                  // print ΔC matrix (F)
+  scanFrame(false);
   uint32_t t1 = millis();
   float fps = 1000.0f / (t1 - t0 + 1e-3f);
-  Serial.printf("Frame time = %lu ms, ~%.1f FPS\n\n", (unsigned long)(t1 - t0), fps);
+  if(g_print_ascii){
+    printAsciiHeatmap();
+  } else if(g_print_csv){
+    printCSV();
+  }
+  Serial.printf("Frame time = %lu ms, ~%.1f FPS\n", (unsigned long)(t1 - t0), fps);
+  handleSerial();
   delay(5);
 }
-```
-
-备注：若将来扩展到并行多行采集，可将 CH1–CH3 接到各自行 4067 的 COM，实现 4 行并行（帧率 ×4）。
