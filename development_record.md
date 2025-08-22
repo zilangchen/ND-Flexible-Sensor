@@ -3806,3 +3806,30 @@ Job ID    Job Name        Queue/Node    Slots  Pos    Resources    Priority
 
 - Python3 脚本，采用模块化结构，可扩展其他监控功能。
 - 使用 `free_gpus.sh` 收集数据，优先使用 `rich` 库进行可视化，若缺失则回退为纯文本输出。
+
+# <Cursor-AI 2025-08-21 23:25:46>
+
+## 修改目的
+
+为项目提供可复制的 Conda 环境定义，便于在其他机器上快速重建开发/运行环境，避免因依赖漂移导致的不一致问题。
+
+## 修改内容摘要
+
+1. 新增环境文件目录 `docs/env/`。
+2. 生成三种可移植的环境描述文件：
+   - `environment.yml`：精确可复现（含具体构建与版本，去除 prefix）。
+   - `environment-min.yml`：最小跨平台规范（仅包含 Python 版本与频道）。
+   - `env-explicit.txt`：显式包清单（@EXPLICIT，linux-64 精确重建）。
+
+## 影响范围
+
+- 文档与环境：新增 `docs/env/*` 文件，供环境复制与部署使用。
+- 跨平台：`environment-min.yml` 便于在不同平台创建近似环境。
+- 精确复现：`env-explicit.txt` 仅适用于 linux-64 作业节点。
+
+## 技术细节
+
+- `environment.yml` 来源于 `conda env export -n ndfs-env` 并移除 `prefix` 字段；包含 `python=3.10.18` 等精确构建版本。
+- `environment-min.yml` 来源于 `conda env export --from-history`，仅保留 `python=3.10` 与 `conda-forge` 频道。
+- `env-explicit.txt` 来源于 `conda list -n ndfs-env --explicit`，用于字节级重建：`conda create --name <env> --file env-explicit.txt`。
+- 文件路径：`docs/env/environment.yml`, `docs/env/environment-min.yml`, `docs/env/env-explicit.txt`。
