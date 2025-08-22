@@ -1,0 +1,17 @@
+#include "bianliang.h"
+double x=0;
+double y=0;
+double z=0;
+u16 danjia=4;
+double TXT1[13]={0};
+double yscs[18]={0};
+double res0=0;
+u8 flag=0;
+u8 cs=1;
+u16 gxcs=0;
+double zzs0=0;
+int zzs=0;
+u8 bz=0;
+u8 jsbz=0;
+u8 key=0;	
+

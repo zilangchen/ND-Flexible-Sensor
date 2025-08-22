@@ -1,0 +1,153 @@
+/**
+  ******************************************************************************
+  * @file    lt_key.c
+  * @author  lingtu
+  * @version V1.0
+  * @date    2021-9-2
+  * @brief   按键应用函数接口
+  ******************************************************************************
+  * @attention
+  *
+  * 实验平台:零涂LT_STM32_Kit开发板
+  * 管脚    :KEY1:PA0   KEY2:PB8    KEY3:PB9
+  * 触发方式:低电平触发
+  * 使用示例:
+			 KEY_GPIO_Config();		//初始化按键管脚
+			 // 检测KEY1
+			 if(Single_Key_Scan(KEY1_GPIO_PORT, KEY1_GPIO_PIN) == KEY_ON)
+			 {
+				 printf("KEY1 press!\r\n");
+			 }
+			 // 检测KEY2
+			 if(Single_Key_Scan(KEY2_GPIO_PORT, KEY2_GPIO_PIN) == KEY_ON)
+			 {
+				 printf("KEY2 press!\r\n");
+			 }
+			 // 检测KEY3
+			 if(Single_Key_Scan(KEY3_GPIO_PORT, KEY3_GPIO_PIN) == KEY_ON)
+			 {
+				 printf("KEY3 press!\r\n");
+			 }
+  * 微信    :lingtu15679003191
+  * 扣扣    :1372090604
+  *
+  ******************************************************************************
+  */
+#include "lt_pwm.h"
+
+static void PWM_GPIO_Config(void)
+{
+    GPIO_InitTypeDef GPIO_InitStructure;
+
+#if (PWM_NUM >= 1)
+    // 输出比较通道1 GPIO 初始化
+    RCC_APB2PeriphClockCmd(PWM_TIM_CH1_GPIO_CLK, ENABLE);
+    GPIO_InitStructure.GPIO_Pin =  PWM_TIM_CH1_PIN;
+    GPIO_InitStructure.GPIO_Mode = GPIO_Mode_AF_PP;
+    GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
+    GPIO_Init(PWM_TIM_CH1_PORT, &GPIO_InitStructure);
+#endif
+
+#if (PWM_NUM >= 2)
+    // 输出比较通道2 GPIO 初始化
+    RCC_APB2PeriphClockCmd(PWM_TIM_CH2_GPIO_CLK, ENABLE);
+    GPIO_InitStructure.GPIO_Pin =  PWM_TIM_CH2_PIN;
+    GPIO_InitStructure.GPIO_Mode = GPIO_Mode_AF_PP;
+    GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
+    GPIO_Init(PWM_TIM_CH2_PORT, &GPIO_InitStructure);
+#endif
+
+#if (PWM_NUM >= 3)
+    // 输出比较通道3 GPIO 初始化
+    RCC_APB2PeriphClockCmd(PWM_TIM_CH3_GPIO_CLK, ENABLE);
+    GPIO_InitStructure.GPIO_Pin =  PWM_TIM_CH3_PIN;
+    GPIO_InitStructure.GPIO_Mode = GPIO_Mode_AF_PP;
+    GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
+    GPIO_Init(PWM_TIM_CH3_PORT, &GPIO_InitStructure);
+#endif
+
+#if (PWM_NUM >= 4)
+    // 输出比较通道4 GPIO 初始化
+    RCC_APB2PeriphClockCmd(PWM_TIM_CH4_GPIO_CLK, ENABLE);
+    GPIO_InitStructure.GPIO_Pin =  PWM_TIM_CH3_PIN;
+    GPIO_InitStructure.GPIO_Mode = GPIO_Mode_AF_PP;
+    GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
+    GPIO_Init(PWM_TIM_CH3_PORT, &GPIO_InitStructure);
+#endif
+}
+
+static void PWM_Mode_Config(void)
+{
+    TIM_TimeBaseInitTypeDef  TIM_TimeBaseStructure;
+    TIM_OCInitTypeDef  TIM_OCInitStructure;
+    // 占空比配置
+    uint16_t CCR1_Val = 5;
+    uint16_t CCR2_Val = 4;
+    uint16_t CCR3_Val = 3;
+    uint16_t CCR4_Val = 2;
+    // 开启定时器时钟,即内部时钟CK_INT=72M
+    PWM_TIM_APBxClock_FUN(PWM_TIM_CLK,ENABLE);
+
+    /*--------------------时基结构体初始化-------------------------*/
+    // 配置周期，这里配置为100K
+
+    // 自动重装载寄存器的值，累计TIM_Period+1个频率后产生一个更新或者中断
+    TIM_TimeBaseStructure.TIM_Period=PWM_TIM_Period;
+    // 驱动CNT计数器的时钟 = Fck_int/(psc+1)
+    TIM_TimeBaseStructure.TIM_Prescaler= PWM_TIM_Prescaler;
+    // 时钟分频因子 ，配置死区时间时需要用到
+    TIM_TimeBaseStructure.TIM_ClockDivision=TIM_CKD_DIV1;
+    // 计数器计数模式，设置为向上计数
+    TIM_TimeBaseStructure.TIM_CounterMode=TIM_CounterMode_Up;
+    // 重复计数器的值，没用到不用管
+    TIM_TimeBaseStructure.TIM_RepetitionCounter=0;
+    // 初始化定时器
+    TIM_TimeBaseInit(PWM_TIM, &TIM_TimeBaseStructure);
+
+    /*--------------------输出比较结构体初始化-------------------*/
+    // 配置为PWM模式1
+    TIM_OCInitStructure.TIM_OCMode = TIM_OCMode_PWM1;
+    // 输出使能
+    TIM_OCInitStructure.TIM_OutputState = TIM_OutputState_Enable;
+    // 输出通道电平极性配置
+    TIM_OCInitStructure.TIM_OCPolarity = TIM_OCPolarity_High;
+
+#if (PWM_NUM >= 1)
+    // 输出比较通道 1
+    TIM_OCInitStructure.TIM_Pulse = CCR1_Val;
+    TIM_OC1Init(PWM_TIM, &TIM_OCInitStructure);
+    TIM_OC1PreloadConfig(PWM_TIM, TIM_OCPreload_Enable);
+#endif
+
+#if (PWM_NUM >= 2)
+    // 输出比较通道 2
+    TIM_OCInitStructure.TIM_Pulse = CCR2_Val;
+    TIM_OC2Init(PWM_TIM, &TIM_OCInitStructure);
+    TIM_OC2PreloadConfig(PWM_TIM, TIM_OCPreload_Enable);
+#endif
+
+#if (PWM_NUM >= 3)
+    // 输出比较通道 3
+    TIM_OCInitStructure.TIM_Pulse = CCR3_Val;
+    TIM_OC3Init(PWM_TIM, &TIM_OCInitStructure);
+    TIM_OC3PreloadConfig(PWM_TIM, TIM_OCPreload_Enable);
+#endif
+
+#if (PWM_NUM >= 4)
+    // 输出比较通道 4
+    TIM_OCInitStructure.TIM_Pulse = CCR4_Val;
+    TIM_OC4Init(PWM_TIM, &TIM_OCInitStructure);
+    TIM_OC4PreloadConfig(PWM_TIM, TIM_OCPreload_Enable);
+#endif
+
+    // 使能计数器
+    TIM_Cmd(PWM_TIM, ENABLE);
+}
+
+void PWM_Init(void)
+{
+    PWM_GPIO_Config();
+    PWM_Mode_Config();
+}
+
+/*********************************************END OF FILE**********************/
