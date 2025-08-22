@@ -1,4 +1,33 @@
-# <Cursor-AI 2025-08-19 13:23:15>
+# <Cursor-AI 2025-08-21 20:35:53>
+
+## 修改目的
+
+忽略并清理 macOS 生成的 .DS_Store 文件，避免无意义的跨平台差异和版本库噪音；并确保仓库不再跟踪此类文件。
+
+## 修改内容摘要
+
+1. 新增仓库级 `.gitignore`，加入 `.DS_Store` 规则。
+2. 清理历史中已被跟踪的 `.DS_Store` 文件（根目录与子目录）。
+3. 提交并推送变更至远程。
+
+## 影响范围
+
+- 代码与文档：无功能改动，仅仓库管理改进。
+- 平台兼容：减少 macOS 专属文件带来的跨平台干扰。
+- Git 历史：新增一条维护类提交（chore）。
+
+## 技术细节
+
+执行命令：
+```bash
+echo ".DS_Store" >> .gitignore
+git rm -r --cached .
+git add .
+git commit -m "chore(git): ignore .DS_Store and purge tracked .DS_Store files"
+git push origin main
+```
+
+---
 
 ## 修改目的
 
